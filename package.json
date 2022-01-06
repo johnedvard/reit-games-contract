@@ -1,0 +1,14 @@
+{
+  "name": "reit-games-contract",
+  "version": "0.0.0",
+  "scripts": {
+    "build": "asb --target debug",
+    "build:release": "asb",
+    "deploy": "near dev-deploy ./build/debug/contract.wasm"
+  },
+  "private": true,
+  "dependencies": {},
+  "devDependencies": {
+    "near-sdk-as": "^3.2.3"
+  }
+}
