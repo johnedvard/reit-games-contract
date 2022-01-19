@@ -1,16 +1,26 @@
-import { PersistentMap, context } from 'near-sdk-as';
+import { PersistentMap, context, logging } from 'near-sdk-as';
 import { Token, TokenMetadata } from './reit-token';
 import { User } from './user';
 
 @nearBindgen
 class NFTContractMetadata {
-  spec: string; // required, essentially a version like "nft-1.0.0"
-  name: string; // required, ex. "Mochi Rising — Digital Edition" or "Metaverse 3"
-  symbol: string; // required, ex. "MOCHI"
-  icon: string | null; // Data URL
-  base_uri: string | null; // Centralized gateway known to have reliable access to decentralized storage assets referenced by `reference` or `media` URLs
-  reference: string | null; // URL to a JSON file with more info
-  reference_hash: string | null; // Base64-encoded sha256 hash of JSON from reference field. Required if `reference` is included.
+  constructor(
+    public spec: string = 'reit-token-0.0.0', // required, essentially a version like "nft-1.0.0"
+    public name: string = 'Reit Token', // required, ex. "Mochi Rising — Digital Edition" or "Metaverse 3"
+    public symbol: string = 'REIT', // required, ex. "MOCHI"
+    public icon: string = '', // Data URL
+    public base_uri: string = '', // Centralized gateway known to have reliable access to decentralized storage assets referenced by `reference` or `media` URLs
+    public reference: string = '', // URL to a JSON file with more info
+    public reference_hash: string = '' // Base64-encoded sha256 hash of JSON from reference field. Required if `reference` is included.
+  ) {}
+}
+
+@nearBindgen
+class Job {
+  title: string;
+  constructor(title: string) {
+    this.title = title;
+  }
 }
 
 @nearBindgen
@@ -44,19 +54,8 @@ export class Contract {
 
   // nft testing
 
-  //keeps track of the metadata for the contract
-  metadata: NFTContractMetadata = {
-    spec: 'reit-token-0.0.0',
-    name: 'Reit Token',
-    symbol: 'REIT',
-    icon: null,
-    base_uri: null,
-    reference: null,
-    reference_hash: null,
-  };
-
-  //contract owner
-  owner_id: string;
+  //contract owner. Is this really needed?
+  owner_id: string = context.contractName;
 
   //keeps track of all the token IDs for a given account
   tokens_per_owner: PersistentMap<string, Array<string>> = new PersistentMap<
@@ -82,6 +81,14 @@ export class Contract {
       tokens.push(token);
     }
     return tokens;
+  }
+
+  nft_metadata(): NFTContractMetadata {
+    return new NFTContractMetadata();
+  }
+
+  nft_token(token_id: string): Token {
+    return this.tokens_by_id.getSome(token_id);
   }
 
   nft_mint(
