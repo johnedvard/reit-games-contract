@@ -39,13 +39,21 @@ export class Contract {
   }
 
   getProfileImageSrc(username: string): string {
-    return this.getOrInitUser(username).profileImageSrc;
+    let profileImageSrc = '';
+    if (this.userMap.contains(username)) {
+      profileImageSrc = this.userMap.getSome(username).profileImageSrc;
+    }
+    return profileImageSrc;
   }
 
   private getOrInitUser(username: string): User {
     if (this.userMap.contains(username)) {
       return this.userMap.getSome(username);
     } else {
+      assert(
+        context.sender == context.predecessor,
+        'Can only change own profile image'
+      );
       const user = new User(username);
       this.userMap.set(username, user);
       return user;
