@@ -16,14 +16,6 @@ class NFTContractMetadata {
 }
 
 @nearBindgen
-class Job {
-  title: string;
-  constructor(title: string) {
-    this.title = title;
-  }
-}
-
-@nearBindgen
 export class Contract {
   private userMap: PersistentMap<string, User> = new PersistentMap<
     string,
@@ -104,15 +96,58 @@ export class Contract {
     metadata: TokenMetadata,
     receiver_id: string
   ): void {
-    // assert(
-    //   this.tokens_by_id.contains(token_id),
-    //   'ID is already taken, create new ID'
-    // );
+    assert(
+      !this.tokens_by_id.contains(token_id),
+      'ID is already used, use another ID'
+    );
     const token = new Token(token_id, metadata, receiver_id);
     const tokens: Array<string> = new Array<string>();
     tokens.push(token_id);
     this.tokens_per_owner.set(receiver_id, tokens);
     this.tokens_by_id.set(token_id, token);
     this.token_metadata_by_id.set(token_id, token.metadata);
+  }
+
+  // can take two additional parameters (approval_id: number, memo: string)
+  nft_transfer(receiver_id: string, token_id: string): void {
+    assert(
+      this.tokens_by_id.contains(token_id),
+      'Token does not exist. Cannot transfer'
+    );
+    assert(
+      context.sender == context.predecessor,
+      'Cannot be called by other contracts'
+    );
+    const token: Token = this.tokens_by_id.getSome(token_id);
+    assert(
+      token && token.owner_id == context.sender,
+      'Can only transfer own token'
+    );
+
+    // transfer ownership
+    token.owner_id = receiver_id;
+    this.tokens_by_id.set(token_id, token);
+
+    // Remove id from existing owner
+    const oldOwnerTokenIds: Array<string> = this.tokens_per_owner.getSome(
+      context.sender
+    );
+    let indexToRemove = -1;
+    for (let i = 0; i < oldOwnerTokenIds.length; i++) {
+      if (oldOwnerTokenIds[i] == token_id) {
+        indexToRemove = i;
+        break;
+      }
+    }
+    oldOwnerTokenIds.splice(indexToRemove, 1);
+    this.tokens_per_owner.set(context.sender, oldOwnerTokenIds);
+
+    // Add id to new owner
+    let newOwnerTokenIds = new Array<string>();
+    if (this.tokens_per_owner.contains(receiver_id)) {
+      newOwnerTokenIds = this.tokens_per_owner.getSome(receiver_id);
+    }
+    newOwnerTokenIds.push(token_id);
+    this.tokens_per_owner.set(receiver_id, newOwnerTokenIds);
   }
 }

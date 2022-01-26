@@ -45,15 +45,6 @@ export class ReitToken {
 
   // --- change methods --- //
 
-  nft_transfer(
-    receiver_id: string,
-    token_id: string,
-    approval_id: number,
-    memo: string
-  ): void {
-    // assert(false, 'nft_transfer not implemented');
-  }
-
   nft_transfer_call(
     receiver_id: string,
     token_id: string,
