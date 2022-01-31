@@ -1,5 +1,5 @@
 import { PersistentMap, context, logging } from 'near-sdk-as';
-import { Token, TokenMetadata } from './reit-token';
+import { ReitToken, Token, TokenMetadata } from './reit-token';
 import { User } from './user';
 
 @nearBindgen
@@ -89,6 +89,18 @@ export class Contract {
 
   nft_token(token_id: string): Token {
     return this.tokens_by_id.getSome(token_id);
+  }
+
+  // TODO (johnedvard) update rules. Everyone can change the description now, which is OK
+  updateNftToken(token_id: string, description: string): Token {
+    assert(
+      this.tokens_by_id.contains(token_id),
+      'token with given ID does not exist'
+    );
+    const token = this.tokens_by_id.getSome(token_id);
+    token.metadata.description = description;
+    this.tokens_by_id.set(token_id, token);
+    return token;
   }
 
   nft_mint(
