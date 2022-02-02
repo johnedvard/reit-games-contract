@@ -72,6 +72,13 @@ export class Contract {
   token_metadata_by_id: PersistentMap<string, TokenMetadata> =
     new PersistentMap<string, TokenMetadata>('token_metadata_by_id');
 
+  // TODO (johnedvard) implement nft_total_supply(): string {}
+
+  nft_supply_for_owner(account_id: string): string {
+    assert(this.tokens_per_owner.contains(account_id));
+    return this.tokens_per_owner.getSome(account_id).length.toString();
+  }
+
   nft_tokens_for_owner(
     account_id: string,
     from_index: u64 = 0,
