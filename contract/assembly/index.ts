@@ -1,14 +1,14 @@
-import { PersistentMap, context, logging } from 'near-sdk-as';
-import { ReitToken, Token, TokenMetadata } from './reit-token';
+import { PersistentMap, context } from 'near-sdk-as';
+import { Token, TokenMetadata } from './reit-token';
 import { User } from './user';
 
 @nearBindgen
 class NFTContractMetadata {
   constructor(
-    public spec: string = 'reit-token-0.0.0', // required, essentially a version like "nft-1.0.0"
-    public name: string = 'Reit Token', // required, ex. "Mochi Rising — Digital Edition" or "Metaverse 3"
+    public spec: string = 'nft-2.0.0', // required, which version of NEP-177 that this contract supports
+    public name: string = 'Reit Games', // required, ex. "Mochi Rising — Digital Edition" or "Metaverse 3"
     public symbol: string = 'REIT', // required, ex. "MOCHI"
-    public icon: string = '', // Data URL
+    public icon: string = `data:image/svg+xml,%3Csvg id='Layer_1' data-name='Layer 1' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 358.43 358.43'%3E%3Cdefs%3E%3Cstyle%3E.cls-1%7Bfill:%23191919;fill-rule:evenodd;%7D%3C/style%3E%3C/defs%3E%3Cpath class='cls-1' d='M108.52,99.68h97.21a44.17,44.17,0,0,1,15.72,85.46l28.46,73.61H231l-27.35-70.7H126.2v53h60L179.4,223.4H143.87V205.72h47.64l20.5,53H108.52V170.38h97.21a26.52,26.52,0,0,0,0-53H126.2V152.7H108.52v-53Z'/%3E%3C/svg%3E`, // Data URL
     public base_uri: string = '', // Centralized gateway known to have reliable access to decentralized storage assets referenced by `reference` or `media` URLs
     public reference: string = '', // URL to a JSON file with more info
     public reference_hash: string = '' // Base64-encoded sha256 hash of JSON from reference field. Required if `reference` is included.
@@ -72,11 +72,15 @@ export class Contract {
   token_metadata_by_id: PersistentMap<string, TokenMetadata> =
     new PersistentMap<string, TokenMetadata>('token_metadata_by_id');
 
-  nft_tokens_for_owner(account_id: string): Array<Token> {
+  nft_tokens_for_owner(
+    account_id: string,
+    from_index: u64 = 0,
+    limit: i32 = 10
+  ): Token[] {
     const tokenIds: string[] = this.tokens_per_owner.getSome(account_id);
 
     const tokens: Array<Token> = new Array<Token>();
-    for (let i = 0; i < tokenIds.length; ++i) {
+    for (let i = 0; i < tokenIds.length; i++) {
       const token: Token = this.tokens_by_id.getSome(tokenIds[i]);
       tokens.push(token);
     }
@@ -100,6 +104,7 @@ export class Contract {
     const token = this.tokens_by_id.getSome(token_id);
     token.metadata.description = description;
     this.tokens_by_id.set(token_id, token);
+    this.token_metadata_by_id.set(token_id, token.metadata);
     return token;
   }
 
@@ -112,8 +117,8 @@ export class Contract {
       !this.tokens_by_id.contains(token_id),
       'ID is already used, use another ID'
     );
+    const tokens: Array<string> = this.tokens_per_owner.getSome(receiver_id);
     const token = new Token(token_id, metadata, receiver_id);
-    const tokens: Array<string> = new Array<string>();
     tokens.push(token_id);
     this.tokens_per_owner.set(receiver_id, tokens);
     this.tokens_by_id.set(token_id, token);
@@ -161,5 +166,28 @@ export class Contract {
     }
     newOwnerTokenIds.push(token_id);
     this.tokens_per_owner.set(receiver_id, newOwnerTokenIds);
+    // TODO (johnedvard) implement cross contract calls
+    // - nft_transfer_call, returns a promise or value,
+    // - nft_on_transfer, returns a promise,
+    // - nft_resolve_transfer, returns a boolean.
+  }
+
+  test(limit: i32): number {
+    return limit;
+  }
+
+  wipeDataFor(account_id: string): void {
+    // TODO (jhonedvard) Remove this method
+    assert(
+      context.sender == 'johnonym.testnet',
+      'Only contract owner can wipe data'
+    );
+
+    const tokenIds = this.tokens_per_owner.getSome(account_id);
+    for (let i = 0; i < tokenIds.length; i++) {
+      this.token_metadata_by_id.delete(tokenIds[i]);
+      this.tokens_by_id.delete(tokenIds[i]);
+    }
+    this.tokens_per_owner.set(account_id, []);
   }
 }
